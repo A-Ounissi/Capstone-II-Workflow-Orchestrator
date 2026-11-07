@@ -1,0 +1,8 @@
+.env
+.vscode/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+uploads/
+.pytest_cache/

@@ -1,0 +1,84 @@
+x-python-env: &python-env
+  DATABASE_URL: mysql+pymysql://workflow_user:workflow_pass@db:3306/workflow_db
+  CELERY_BROKER_URL: redis://redis:6379/0
+  UPLOAD_DIR: /app/uploads
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  OPENAI_MODEL: gpt-4o-mini
+
+services:
+  redis:
+    image: redis:7-alpine
+
+  healthcheck:
+    test: [ "CMD", "redis-cli", "ping" ]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE: workflow_db
+        MYSQL_USER: workflow_user
+        MYSQL_PASSWORD: workflow_pass
+        MYSQL_ROOT_PASSWORD: root_pass
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      <<: *python-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app/app
+      - uploads:/app/uploads
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build: .
+    environment:
+      <<: *python-env
+    command: celery -A app.worker worker --loglevel=info --queues=ocr,extraction,validation,default --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - uploads:/app/uploads
+
+volumes:
+  mysql_data:
+  uploads:
