@@ -123,3 +123,16 @@ create table step_runs (
     REFERENCES workflow_steps(step_id)
 );
 
+INSERT INTO workflows (name, description, definition)
+VALUES (
+    'invoice_processing',
+    'Extract and validate invoice information',
+    '{"steps": ["ocr_step", "extraction_step", "validation_step"]}'
+);
+
+INSERT INTO workflow_steps
+    (workflow_id, step_name, step_type, order_index, config, depends_on)
+VALUES
+    (1, 'ocr_step', 'run_ocr', 1, '{}', '[]'),
+    (1, 'extraction_step', 'run_extraction', 2, '{}', '["ocr_step"]'),
+    (1, 'validation_step', 'run_validation', 3, '{}', '["extraction_step"]');
