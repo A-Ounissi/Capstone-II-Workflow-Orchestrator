@@ -1,4 +1,4 @@
-create table if not exists jobs (
+create table jobs (
     job_id CHAR(36) PRIMARY KEY,
     status ENUM('pending', 'processing', 'completed', 'failed', 'review') NOT NULL DEFAULT 'pending' ,
     file_hash CHAR(64) NOT NULL,
